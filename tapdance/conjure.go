@@ -16,6 +16,7 @@ import (
 
 	pt "git.torproject.org/pluggable-transports/goptlib.git"
 	"github.com/golang/protobuf/proto"
+	"github.com/refraction-networking/conjure/pkg/dtls"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
 	ps "github.com/refraction-networking/gotapdance/tapdance/phantoms"
 	tls "github.com/refraction-networking/utls"
@@ -416,6 +417,17 @@ func (reg *ConjureReg) Connect(ctx context.Context) (net.Conn, error) {
 		}
 
 		return conn, err
+	case pb.TransportType_DTLS:
+		for _, phantom := range phantoms {
+			conn, err := dtls.Dial(&net.UDPAddr{IP: *phantom, Port: 4444}, reg.keys.SharedSecret)
+			if err != nil {
+				continue
+			}
+
+			return conn, nil
+		}
+
+		return nil, fmt.Errorf("failed to connect to any phantom")
 	case pb.TransportType_Null:
 		// Dial and do nothing to the connection before returning it to the user.
 		return reg.getFirstConnection(ctx, reg.TcpDialer, phantoms)

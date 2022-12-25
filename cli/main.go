@@ -280,6 +280,8 @@ func getTransportFromName(name string) pb.TransportType {
 		return pb.TransportType_Min
 	case "obfs4":
 		return pb.TransportType_Obfs4
+	case "dtls":
+		return pb.TransportType_DTLS
 	default:
 		return pb.TransportType_Min
 	}
