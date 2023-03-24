@@ -33,7 +33,7 @@ require (
 	github.com/google/pprof v0.0.0-20211214055906-6f57359322fd // indirect
 	github.com/keltia/proxy v0.9.3 // indirect
 	github.com/klauspost/compress v1.15.12 // indirect
-	github.com/pion/dtls/v2 v2.1.6-0.20221201105059-0b114548d59d // indirect
+	github.com/mingyech/dtls/v2 v2.0.0-20221227014520-4beb8468ab6e // indirect
 	github.com/pion/logging v0.2.2 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/sctp v1.8.5 // indirect
@@ -47,4 +47,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/refraction-networking/conjure => github.com/mingyech/conjure v0.2.1-0.20221225005650-09aa9cc3b031
+replace github.com/refraction-networking/conjure => github.com/mingyech/conjure v0.2.1-0.20230323193639-622e9bd98e8c
