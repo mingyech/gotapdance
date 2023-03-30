@@ -419,10 +419,13 @@ func (reg *ConjureReg) Connect(ctx context.Context) (net.Conn, error) {
 		return conn, err
 	case pb.TransportType_DTLS:
 		for _, phantom := range phantoms {
-			conn, err := dtls.Dial(&net.UDPAddr{IP: *phantom, Port: 4444}, reg.keys.SharedSecret)
+			Logger().Debugf("dailing to DTLS: %v", reg.keys.SharedSecret)
+			conn, err := dtls.Dial(&net.UDPAddr{IP: *phantom, Port: 443}, reg.keys.SharedSecret)
 			if err != nil {
+				Logger().Errorf("failed to dial DTLS: %v", err)
 				continue
 			}
+			Logger().Debugf("dialed to DTLS: %v", conn.RemoteAddr())
 
 			return conn, nil
 		}
