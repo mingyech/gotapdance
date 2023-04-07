@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"net"
-
-	pb "github.com/refraction-networking/gotapdance/protobuf"
 )
 
 var sessionsTotal CounterUint64
@@ -25,10 +23,10 @@ type Dialer struct {
 	DarkDecoyRegistrar Registrar
 
 	// The type of transport to use for Conjure connections.
-	Transport pb.TransportType
+	Transport Transport
 
 	UseProxyHeader bool
-	V6Support      bool // *bool so that it is a nullable type. that can be overridden
+	V6Support      bool
 	Width          int
 
 	// Subnet that we want to limit to (or empty if they're all fine)
