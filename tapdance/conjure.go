@@ -431,19 +431,21 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 
 		return conn, err
 	case pb.TransportType_DTLS:
-		for _, phantom := range phantoms {
-			Logger().Debugf("dailing to DTLS: %v", reg.keys.SharedSecret)
-			conn, err := dtls.Dial(&net.UDPAddr{IP: *phantom, Port: 443}, reg.keys.SharedSecret)
+		dialer := func(ctx context.Context, network, address string) (net.Conn, error) {
+			addr, err := net.ResolveUDPAddr("udp", address)
 			if err != nil {
-				Logger().Errorf("failed to dial DTLS: %v", err)
-				continue
+				return nil, err
 			}
-			Logger().Debugf("dialed to DTLS: %v", conn.RemoteAddr())
-
-			return conn, nil
+			Logger().Debugf("%v dialing dtls to %v", reg.sessionIDStr, addr)
+			return dtls.Dial(addr, reg.keys.SharedSecret)
+		}
+		conn, err := reg.getFirstConnection(ctx, dialer, phantoms)
+		if err != nil {
+			Logger().Infof("%v failed to form dtls connection: %v", reg.sessionIDStr, err)
+			return nil, err
 		}
 
-		return nil, fmt.Errorf("failed to connect to any phantom")
+		return conn, nil
 	case pb.TransportType_Null:
 		// Dial and do nothing to the connection before returning it to the user.
 		return reg.getFirstConnection(ctx, reg.Dialer, phantoms)
