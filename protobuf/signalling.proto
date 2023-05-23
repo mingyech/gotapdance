@@ -286,6 +286,10 @@ message GenericTransportParams {
     optional bool randomize_dst_port = 13;
 }
 
+message DTLSTransportParams {
+    optional uint32 src_port = 1;
+}
+
 enum RegistrationSource {
   Unspecified = 0;
 	Detector = 1;
