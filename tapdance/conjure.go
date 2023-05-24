@@ -730,6 +730,7 @@ func (reg *ConjureReg) generateClientToStation() (*pb.ClientToStation, error) {
 	if err != nil {
 		Logger().Debugf("%s failed to marshal transport parameters ", reg.sessionIDStr)
 	}
+	fmt.Printf("transportParams: %v\n", transportParams)
 
 	// remove type url to save space for DNS registration
 	// for server side changes see https://github.com/refraction-networking/conjure/pull/163
