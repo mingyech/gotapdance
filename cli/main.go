@@ -160,7 +160,7 @@ func connectDirect(td bool, apiEndpoint string, registrar string, connectTarget 
 		return fmt.Errorf("error finding or creating transport %v: %v", transport, err)
 	}
 
-	fmt.Printf("transport: %v\n", t)
+	fmt.Printf("transport: %v\n", t.GetParams())
 
 	tdDialer := tapdance.Dialer{
 		DarkDecoy:          !td,
