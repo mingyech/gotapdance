@@ -435,8 +435,14 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 			if err != nil {
 				return nil, err
 			}
-			Logger().Debugf("%v dialing dtls to %v", reg.sessionIDStr, addr)
-			return dtls.Dial(addr, reg.keys.SharedSecret)
+			Logger().Debugf("%v listening dtls from %v", reg.sessionIDStr, addr)
+			listener, err := dtls.Listen(&net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: 6666})
+			if err != nil {
+				return nil, fmt.Errorf("error creating DTLS listener: %v", err)
+			}
+
+			return listener.AcceptFromSecret(reg.keys.SharedSecret)
+			// return dtls.Dial(addr, reg.keys.SharedSecret)
 		}
 		conn, err := reg.getFirstConnection(ctx, dialer, phantoms)
 		if err != nil {
