@@ -462,6 +462,7 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 			conn, err := listener.AcceptFromSecretWithContext(ctxtimeout, reg.keys.SharedSecret)
 			if err != nil {
 				// If an error occurred, fall back to dtls.Dial
+				Logger().Debugf("Falling back to dial: %v", err)
 				return dtls.Dial(addr, reg.keys.SharedSecret)
 			}
 			// If no error, return the established connection
