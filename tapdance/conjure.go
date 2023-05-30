@@ -435,8 +435,16 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 			if err != nil {
 				return nil, err
 			}
-			Logger().Debugf("%v listening dtls from %v", reg.sessionIDStr, addr)
-			listener, err := dtls.Listen(&net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: 6666})
+
+			// PublicAddr should have been called before registration
+			privPort, _, err := PublicAddr("")
+			if err != nil {
+				return nil, fmt.Errorf("error getting private port to listen to: %v", err)
+			}
+
+			Logger().Debugf("%v listening dtls from phantom %v on port %v (private port %v)", reg.sessionIDStr, addr, reg.Transport.GetParams(), privPort)
+
+			listener, err := dtls.Listen(&net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: privPort})
 			if err != nil {
 				return nil, fmt.Errorf("error creating DTLS listener: %v", err)
 			}

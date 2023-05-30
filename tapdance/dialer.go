@@ -3,8 +3,11 @@ package tapdance
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/refraction-networking/conjure/application/transports/connecting/dtls"
 	"github.com/refraction-networking/conjure/application/transports/wrapping/min"
 	"github.com/refraction-networking/conjure/application/transports/wrapping/obfs4"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
@@ -105,6 +108,12 @@ func (d *Dialer) DialContext(ctx context.Context, network, address string) (net.
 				transport = &min.ClientTransport{Parameters: &pb.GenericTransportParams{RandomizeDstPort: &randomizePortDefault}}
 			case pb.TransportType_Obfs4:
 				transport = &obfs4.ClientTransport{Parameters: &pb.GenericTransportParams{RandomizeDstPort: &randomizePortDefault}}
+			case pb.TransportType_DTLS:
+				_, pubPort, err := PublicAddr(*Assets().GetDNSRegConf().StunServer)
+				if err != nil {
+					return nil, fmt.Errorf("error getting port mapping: %v", err)
+				}
+				transport = &dtls.ClientTransport{Parameters: &pb.DTLSTransportParams{SrcPort: proto.Uint32(uint32(pubPort))}}
 			default:
 				return nil, errors.New("unknown transport by TransportType try using TransportConfig")
 			}

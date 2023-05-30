@@ -20,12 +20,14 @@ import (
 	"github.com/refraction-networking/gotapdance/tapdance/phantoms"
 	"github.com/refraction-networking/gotapdance/tdproxy"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
 	defaultAPIEndpoint     = "https://registration.refraction.network/api/register"
 	defaultBDAPIEndpoint   = "https://registration.refraction.network/api/register-bidirectional"
 	defaultConnectionDelay = 750 * time.Millisecond
+	defaultSTUNServer      = "stun.voip.blackberry.com:3478"
 )
 
 func main() {
@@ -52,6 +54,8 @@ func main() {
 	var randomizeDstPort = flag.Bool("rand-dst-port", true, `enable destination port randomization for the transport connection`)
 
 	var phantomNet = flag.String("phantom", "", "Target phantom subnet. Must overlap with ClientConf, and will be achieved by brute force of seeds until satisified")
+
+	var stunServer = flag.String("stun-server", defaultSTUNServer, "STUN server for NAT traversal.")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Dark Decoy CLI\n$./cli -connect-addr=<decoy_address> [OPTIONS] \n\nOptions:\n")
@@ -136,14 +140,14 @@ func main() {
 		fmt.Printf("Using Station Pubkey: %s\n", hex.EncodeToString(tapdance.Assets().GetConjurePubkey()[:]))
 	}
 
-	err = connectDirect(*td, *APIRegistration, *registrar, *connectTarget, *port, *proxyHeader, v6Support, *width, *transport, *phantomNet, *randomizeDstPort)
+	err = connectDirect(*td, *APIRegistration, *registrar, *connectTarget, *port, *proxyHeader, v6Support, *width, *transport, *phantomNet, *randomizeDstPort, *stunServer)
 	if err != nil {
 		tapdance.Logger().Println(err)
 		os.Exit(1)
 	}
 }
 
-func connectDirect(td bool, apiEndpoint string, registrar string, connectTarget string, localPort int, proxyHeader bool, v6Support bool, width int, transport string, phantomNet string, randomizeDstPort bool) error {
+func connectDirect(td bool, apiEndpoint string, registrar string, connectTarget string, localPort int, proxyHeader bool, v6Support bool, width int, transport string, phantomNet string, randomizeDstPort bool, stunServer string) error {
 	if _, _, err := net.SplitHostPort(connectTarget); err != nil {
 		return fmt.Errorf("failed to parse host and port from connectTarget %s: %v",
 			connectTarget, err)
@@ -155,22 +159,30 @@ func connectDirect(td bool, apiEndpoint string, registrar string, connectTarget 
 		return fmt.Errorf("error listening on port %v: %v", localPort, err)
 	}
 
-	t, err := transports.NewWithParams(transport, &pb.GenericTransportParams{RandomizeDstPort: &randomizeDstPort})
-	if err != nil {
-		return fmt.Errorf("error finding or creating transport %v: %v", transport, err)
-	}
-
-	fmt.Printf("transport: %v\n", t.GetParams())
-
 	tdDialer := tapdance.Dialer{
 		DarkDecoy:          !td,
 		DarkDecoyRegistrar: registration.NewDecoyRegistrar(),
 		UseProxyHeader:     proxyHeader,
 		V6Support:          v6Support,
 		Width:              width,
-		// Transport:          getTransportFromName(transport), // Still works for backwards compatibility
-		TransportConfig: t,
-		PhantomNet:      phantomNet,
+		PhantomNet:         phantomNet,
+	}
+
+	switch transport {
+	case "dtls":
+		_, pubPort, err := tapdance.PublicAddr(stunServer)
+		if err != nil {
+			return fmt.Errorf("error finding public port: %v", err)
+		}
+		tdDialer.TransportConfig, err = transports.NewWithParams(transport, &pb.DTLSTransportParams{SrcPort: proto.Uint32(uint32(pubPort))})
+		if err != nil {
+			return fmt.Errorf("error finding or creating transport %v: %v", transport, err)
+		}
+	default:
+		tdDialer.TransportConfig, err = transports.NewWithParams(transport, &pb.GenericTransportParams{RandomizeDstPort: &randomizeDstPort})
+		if err != nil {
+			return fmt.Errorf("error finding or creating transport %v: %v", transport, err)
+		}
 	}
 
 	switch registrar {
