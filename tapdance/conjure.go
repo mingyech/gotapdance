@@ -437,7 +437,7 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 			}
 
 			// PublicAddr should have been called before registration
-			privPort, _, err := PublicAddr("")
+			privPort, pubPort, err := PublicAddr("")
 			if err != nil {
 				return nil, fmt.Errorf("error getting private port to listen to: %v", err)
 			}
@@ -448,15 +448,24 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 				return nil, fmt.Errorf("error opening UDP port from gateway: %v", err)
 			}
 
-			Logger().Debugf("%v listening dtls from phantom %v on port %v (private port %v)", reg.sessionIDStr, addr, reg.Transport.GetParams(), privPort)
+			Logger().Debugf("%v listening dtls from phantom %v on port %v %v (private port %v)", reg.sessionIDStr, addr, pubPort, reg.Transport.GetParams(), privPort)
 
 			listener, err := dtls.Listen(laddr)
 			if err != nil {
 				return nil, fmt.Errorf("error creating DTLS listener: %v", err)
 			}
 
-			return listener.AcceptFromSecret(reg.keys.SharedSecret)
-			// return dtls.Dial(addr, reg.keys.SharedSecret)
+			// Create a context that will automatically cancel after 5 seconds or when the existing context is cancelled, whichever comes first.
+			ctxtimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+
+			conn, err := listener.AcceptFromSecretWithContext(ctxtimeout, reg.keys.SharedSecret)
+			if err != nil {
+				// If an error occurred, fall back to dtls.Dial
+				return dtls.Dial(addr, reg.keys.SharedSecret)
+			}
+			// If no error, return the established connection
+			return conn, nil
 		}
 		conn, err := reg.getFirstConnection(ctx, dialer, phantoms)
 		if err != nil {
