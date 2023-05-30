@@ -455,14 +455,13 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 				return nil, fmt.Errorf("error creating DTLS listener: %v", err)
 			}
 
-			// Create a context that will automatically cancel after 5 seconds
-			ctxtimeout, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			// Create a context that will automatically cancel after 5 seconds or when the existing context is cancelled, whichever comes first.
+			ctxtimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
 			conn, err := listener.AcceptFromSecretWithContext(ctxtimeout, reg.keys.SharedSecret)
 			if err != nil {
 				// If an error occurred, fall back to dtls.Dial
-				return nil, err
 				return dtls.Dial(addr, reg.keys.SharedSecret)
 			}
 			// If no error, return the established connection
