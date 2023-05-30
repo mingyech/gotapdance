@@ -10,9 +10,9 @@ import (
 
 const ttl = 3
 
-func openUDP(addr *net.UDPAddr) error {
+func openUDP(laddr, addr *net.UDPAddr) error {
 	// Create a UDP connection
-	conn, err := net.DialUDP("udp", nil, addr)
+	conn, err := net.DialUDP("udp", laddr, addr)
 	if err != nil {
 		return err
 	}

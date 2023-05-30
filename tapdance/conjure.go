@@ -442,14 +442,15 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 				return nil, fmt.Errorf("error getting private port to listen to: %v", err)
 			}
 
-			err = openUDP(addr)
+			laddr := &net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: privPort}
+			err = openUDP(laddr, addr)
 			if err != nil {
 				return nil, fmt.Errorf("error opening UDP port from gateway: %v", err)
 			}
 
 			Logger().Debugf("%v listening dtls from phantom %v on port %v (private port %v)", reg.sessionIDStr, addr, reg.Transport.GetParams(), privPort)
 
-			listener, err := dtls.Listen(&net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: privPort})
+			listener, err := dtls.Listen(laddr)
 			if err != nil {
 				return nil, fmt.Errorf("error creating DTLS listener: %v", err)
 			}
