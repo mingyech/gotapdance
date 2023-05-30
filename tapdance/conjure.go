@@ -456,7 +456,7 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 			}
 
 			// Create a context that will automatically cancel after 5 seconds
-			ctxtimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctxtimeout, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
 
 			conn, err := listener.AcceptFromSecretWithContext(ctxtimeout, reg.keys.SharedSecret)
