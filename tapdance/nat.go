@@ -56,6 +56,7 @@ func PublicAddr(stunServer string) (privatePort int, publicPort int, err error) 
 	if err != nil {
 		return 0, 0, fmt.Errorf("error connecting to STUN server: %v", err)
 	}
+	defer udpConn.Close()
 
 	localAddr, err := net.ResolveUDPAddr(udpConn.LocalAddr().Network(), udpConn.LocalAddr().String())
 	if err != nil {
