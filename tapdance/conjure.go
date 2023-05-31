@@ -448,7 +448,7 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 				return nil, fmt.Errorf("error opening UDP port from gateway: %v", err)
 			}
 
-			Logger().Debugf("%v listening dtls from phantom %v on port %v %v (private port %v)", reg.sessionIDStr, addr, pubPort, reg.Transport.GetParams(), privPort)
+			Logger().Debugf("%v listening dtls from phantom %v on public port %v (private port %v)", reg.sessionIDStr, addr, pubPort, privPort)
 
 			listener, err := dtls.Listen(laddr)
 			if err != nil {
@@ -754,7 +754,6 @@ func (reg *ConjureReg) generateClientToStation() (*pb.ClientToStation, error) {
 	if err != nil {
 		Logger().Debugf("%s failed to marshal transport parameters ", reg.sessionIDStr)
 	}
-	fmt.Printf("transportParams: %v\n", transportParams)
 
 	// remove type url to save space for DNS registration
 	// for server side changes see https://github.com/refraction-networking/conjure/pull/163
