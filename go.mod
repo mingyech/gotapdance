@@ -9,17 +9,17 @@ require (
 	github.com/jinzhu/copier v0.3.5
 	github.com/keltia/ripe-atlas v0.0.0-20211221125000-f6eb808d5dc6
 	github.com/pelletier/go-toml v1.9.5
-	github.com/pion/stun v0.3.5
+	github.com/pion/stun v0.6.0
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/profile v1.7.0
 	github.com/refraction-networking/conjure v0.4.0
 	github.com/refraction-networking/utls v1.2.0
 	github.com/sergeyfrolov/bsbuffer v0.0.0-20180903213811-94e85abb8507
 	github.com/sirupsen/logrus v1.9.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.3
 	gitlab.com/yawning/obfs4.git v0.0.0-20220904064028-336a71d6e4cf
-	golang.org/x/crypto v0.5.0
-	golang.org/x/net v0.7.0
+	golang.org/x/crypto v0.8.0
+	golang.org/x/net v0.9.0
 	google.golang.org/protobuf v1.28.1
 )
 
@@ -44,17 +44,19 @@ require (
 	github.com/oschwald/geoip2-golang v1.8.0 // indirect
 	github.com/oschwald/maxminddb-golang v1.10.0 // indirect
 	github.com/pebbe/zmq4 v1.2.9 // indirect
+	github.com/pion/dtls/v2 v2.2.7 // indirect
 	github.com/pion/logging v0.2.2 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/sctp v1.8.5 // indirect
 	github.com/pion/transport v0.14.1 // indirect
+	github.com/pion/transport/v2 v2.2.1 // indirect
 	github.com/pion/udp v0.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gitlab.com/yawning/edwards25519-extra.git v0.0.0-20211229043746-2f91fcc9fbdb // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/refraction-networking/conjure => github.com/mingyech/conjure v0.2.1-0.20230530171116-8fe2cc4e1d6d
+replace github.com/refraction-networking/conjure => github.com/mingyech/conjure v0.2.1-0.20230531171205-dfbc6782f2d3
