@@ -193,7 +193,7 @@ func (r *DNSRegistrar) registerBidirectional(cjSession *tapdance.ConjureSession)
 // Register prepares and sends the registration request.
 func (r *DNSRegistrar) Register(cjSession *tapdance.ConjureSession, ctx context.Context) (*tapdance.ConjureReg, error) {
 
-	defer sleepWithContext(ctx, r.connectionDelay)
+	// defer sleepWithContext(ctx, r.connectionDelay)
 
 	if r.bidirectional {
 		return r.registerBidirectional(cjSession)
