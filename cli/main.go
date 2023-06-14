@@ -232,22 +232,23 @@ func connectDirect(td bool, apiEndpoint string, registrar string, connectTarget 
 		return fmt.Errorf("unknown registrar %v", registrar)
 	}
 
-	tdConn, err := tdDialer.Dial("tcp", connectTarget)
-	if err != nil || tdConn == nil {
-		return fmt.Errorf("failed to dial %s: %v\n", connectTarget, err)
-	}
-
 	for {
 		clientConn, err := l.AcceptTCP()
 		if err != nil {
 			return fmt.Errorf("error accepting client connection %v: ", err)
 		}
 
-		go manageConn(tdDialer, connectTarget, clientConn, tdConn)
+		go manageConn(tdDialer, connectTarget, clientConn)
 	}
 }
 
-func manageConn(tdDialer tapdance.Dialer, connectTarget string, clientConn *net.TCPConn, tdConn net.Conn) {
+func manageConn(tdDialer tapdance.Dialer, connectTarget string, clientConn *net.TCPConn) {
+	// TODO: go back to pre-dialing after measuring performance
+	tdConn, err := tdDialer.Dial("tcp", connectTarget)
+	if err != nil || tdConn == nil {
+		fmt.Printf("failed to dial %s: %v\n", connectTarget, err)
+		return
+	}
 
 	// Copy data from the client application into the DarkDecoy connection.
 	// 		TODO: Make sure this works
