@@ -99,9 +99,9 @@ func (r DecoyRegistrar) Register(cjSession *tapdance.ConjureSession, ctx context
 	}
 
 	// randomized sleeping here to break the intraflow signal
-	// toSleep := reg.GetRandomDuration(3000, 212, 3449)
-	// logger.Debugf("Successfully sent registrations, sleeping for: %v", toSleep)
-	// sleepWithContext(ctx, toSleep)
+	toSleep := reg.GetRandomDuration(3000, 212, 3449)
+	logger.Debugf("Successfully sent registrations, sleeping for: %v", toSleep)
+	sleepWithContext(ctx, toSleep)
 
 	return reg, nil
 }
