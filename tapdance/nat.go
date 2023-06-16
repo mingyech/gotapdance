@@ -8,7 +8,7 @@ import (
 	"github.com/pion/stun"
 )
 
-const ttl = 3
+const ttl = 5
 
 func openUDP(laddr, addr *net.UDPAddr) error {
 	// Create a UDP connection
