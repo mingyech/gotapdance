@@ -463,6 +463,9 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 			defer cancel()
 
 			conn, err := listener.AcceptFromSecretWithContext(ctxtimeout, reg.keys.SharedSecret)
+			if conn.RemoteAddr().String() != addr.String() {
+				Logger().Warningf("Remote address %v does not match expected %v", conn.RemoteAddr().String(), addr.String())
+			}
 			if err != nil {
 				// If an error occurred, fall back to dtls.Dial
 				Logger().Debugf("Falling back to dial: %v", err)
