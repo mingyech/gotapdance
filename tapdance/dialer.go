@@ -3,13 +3,9 @@ package tapdance
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/refraction-networking/conjure/application/transports/connecting/dtls"
-	"github.com/refraction-networking/conjure/application/transports/wrapping/min"
-	"github.com/refraction-networking/conjure/application/transports/wrapping/obfs4"
+	"github.com/refraction-networking/gotapdance/pkg/transports"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
 )
 
@@ -29,6 +25,10 @@ type Dialer struct {
 
 	// The type of registrar to use when performing Conjure registrations.
 	DarkDecoyRegistrar Registrar
+	// Indicates whether the client will allow the registrar to provide alternative parameters that
+	// may work better in substitute for the deterministically selected parameters. This only works
+	// for bidirectional registration methods where the client receives a RegistrationResponse.
+	AllowRegistrarOverrides bool
 
 	// The type of transport to use for Conjure connections.
 	Transport       pb.TransportType
@@ -102,21 +102,12 @@ func (d *Dialer) DialContext(ctx context.Context, network, address string) (net.
 		var cjSession *ConjureSession
 
 		transport := d.TransportConfig
+		var err error
 		if d.TransportConfig == nil {
-			switch d.Transport {
-			case pb.TransportType_Min:
-				transport = &min.ClientTransport{Parameters: &pb.GenericTransportParams{RandomizeDstPort: &randomizePortDefault}}
-			case pb.TransportType_Obfs4:
-				transport = &obfs4.ClientTransport{Parameters: &pb.GenericTransportParams{RandomizeDstPort: &randomizePortDefault}}
-			case pb.TransportType_DTLS:
-				_, pubPort, err := PublicAddr(*Assets().GetDNSRegConf().StunServer)
-				if err != nil {
-					return nil, fmt.Errorf("error getting port mapping: %v", err)
-				}
-				transport = &dtls.ClientTransport{Parameters: &pb.DTLSTransportParams{SrcPort: proto.Uint32(uint32(pubPort))}}
-			default:
-				return nil, errors.New("unknown transport by TransportType try using TransportConfig")
-			}
+			transport, err = transports.ConfigFromTransportType(d.Transport, randomizePortDefault)
+		}
+		if err != nil {
+			return nil, err
 		}
 
 		// If specified, only select a phantom from a given range
@@ -136,6 +127,7 @@ func (d *Dialer) DialContext(ctx context.Context, network, address string) (net.
 		cjSession.Dialer = d.Dialer
 		cjSession.UseProxyHeader = d.UseProxyHeader
 		cjSession.Width = uint(d.Width)
+		cjSession.AllowRegistrarOverrides = d.AllowRegistrarOverrides
 
 		if d.V6Support {
 			cjSession.V6Support = &V6{include: both, support: true}

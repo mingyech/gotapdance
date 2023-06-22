@@ -3,28 +3,27 @@ module github.com/refraction-networking/gotapdance
 go 1.18
 
 require (
-	git.torproject.org/pluggable-transports/goptlib.git v1.3.0
 	github.com/flynn/noise v1.0.0
-	github.com/golang/protobuf v1.5.2
+	github.com/golang/protobuf v1.5.3
 	github.com/jinzhu/copier v0.3.5
 	github.com/keltia/ripe-atlas v0.0.0-20211221125000-f6eb808d5dc6
 	github.com/pelletier/go-toml v1.9.5
 	github.com/pion/stun v0.6.0
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/profile v1.7.0
-	github.com/refraction-networking/conjure v0.4.0
+	github.com/refraction-networking/conjure v0.4.1
 	github.com/refraction-networking/utls v1.2.0
 	github.com/sergeyfrolov/bsbuffer v0.0.0-20180903213811-94e85abb8507
 	github.com/sirupsen/logrus v1.9.0
-	github.com/stretchr/testify v1.8.3
-	gitlab.com/yawning/obfs4.git v0.0.0-20220904064028-336a71d6e4cf
-	golang.org/x/crypto v0.8.0
-	golang.org/x/net v0.9.0
-	google.golang.org/protobuf v1.28.1
+	github.com/stretchr/testify v1.8.4
+	golang.org/x/crypto v0.9.0
+	golang.org/x/net v0.10.0
+	google.golang.org/protobuf v1.30.0
 )
 
 require (
 	filippo.io/edwards25519 v1.0.0 // indirect
+	git.torproject.org/pluggable-transports/goptlib.git v1.3.0 // indirect
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
@@ -39,7 +38,8 @@ require (
 	github.com/keltia/proxy v0.9.3 // indirect
 	github.com/klauspost/compress v1.15.12 // indirect
 	github.com/libp2p/go-reuseport v0.3.0 // indirect
-	github.com/mingyech/dtls/v2 v2.0.0-20221227014520-4beb8468ab6e // indirect
+	github.com/mingyech/dtls/v2 v2.0.0-20230612212344-55a590c00078 // indirect
+	github.com/mingyech/transport/v2 v2.0.0-20230612212211-3c84742e27c5 // indirect
 	github.com/mroth/weightedrand v1.0.0 // indirect
 	github.com/oschwald/geoip2-golang v1.8.0 // indirect
 	github.com/oschwald/maxminddb-golang v1.10.0 // indirect
@@ -48,15 +48,14 @@ require (
 	github.com/pion/logging v0.2.2 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/sctp v1.8.5 // indirect
-	github.com/pion/transport v0.14.1 // indirect
 	github.com/pion/transport/v2 v2.2.1 // indirect
-	github.com/pion/udp v0.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	gitlab.com/yawning/edwards25519-extra.git v0.0.0-20211229043746-2f91fcc9fbdb // indirect
-	golang.org/x/sys v0.7.0 // indirect
+	gitlab.com/yawning/edwards25519-extra.git v0.0.0-20220726154925-def713fd18e4 // indirect
+	gitlab.com/yawning/obfs4.git v0.0.0-20220904064028-336a71d6e4cf // indirect
+	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/refraction-networking/conjure => github.com/mingyech/conjure v0.2.1-0.20230531171205-dfbc6782f2d3
+replace github.com/refraction-networking/conjure => github.com/mingyech/conjure v0.2.1-0.20230622074019-1354b4a4116d
