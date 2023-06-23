@@ -48,6 +48,23 @@ var (
 	pubPortSingle  int
 )
 
+func reconnectUDPAddr(conn *net.UDPConn, addr *net.UDPAddr) error {
+	file, err := conn.File()
+	if err != nil {
+		return fmt.Errorf("failed to get file descriptor: %v", err)
+	}
+
+	sa := &syscall.SockaddrInet4{Port: addr.Port}
+	copy(sa.Addr[:], addr.IP.To4())
+
+	err = syscall.Connect(int(file.Fd()), sa)
+	if err != nil {
+		return fmt.Errorf("failed to connect: %v", err)
+	}
+
+	return nil
+}
+
 func PublicAddr(stunServer string) (privatePort int, publicPort int, err error) {
 
 	if privPortSingle != 0 && pubPortSingle != 0 {
