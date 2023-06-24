@@ -445,8 +445,7 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 				return nil, fmt.Errorf("error getting private port to listen to: %v", err)
 			}
 
-			laddr := &net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: privPort}
-			err = openUDP(laddr, addr)
+			err = openUDP(addr)
 			if err != nil {
 				return nil, fmt.Errorf("error opening UDP port from gateway: %v", err)
 			}
@@ -459,10 +458,10 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 			// }
 
 			// Create a context that will automatically cancel after 5 seconds or when the existing context is cancelled, whichever comes first.
-			ctxtimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctxtimeout, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
 
-			udpConn, err := net.DialUDP("udp", laddr, addr)
+			udpConn, err := dialReuseUDP(addr)
 			if err != nil {
 				return nil, fmt.Errorf("error dialing udp: %v", err)
 			}
