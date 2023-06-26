@@ -445,31 +445,35 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 				return nil, fmt.Errorf("error getting private port to listen to: %v", err)
 			}
 
-			laddr := &net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: privPort}
-			err = openUDP(laddr, addr)
+			err = openUDP(addr)
 			if err != nil {
 				return nil, fmt.Errorf("error opening UDP port from gateway: %v", err)
 			}
 
 			Logger().Debugf("%v listening dtls from phantom %v on public port %v (private port %v)", reg.sessionIDStr, addr, pubPort, privPort)
 
-			listener, err := dtls.Listen(laddr)
-			if err != nil {
-				return nil, fmt.Errorf("error creating DTLS listener: %v", err)
-			}
+			// listener, err := dtls.Listen(laddr)
+			// if err != nil {
+			// 	return nil, fmt.Errorf("error creating DTLS listener: %v", err)
+			// }
 
 			// Create a context that will automatically cancel after 5 seconds or when the existing context is cancelled, whichever comes first.
-			ctxtimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctxtimeout, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
 
-			conn, err := listener.AcceptFromSecretWithContext(ctxtimeout, reg.keys.SharedSecret)
-			if conn.RemoteAddr().String() != addr.String() {
-				Logger().Warningf("Remote address %v does not match expected %v", conn.RemoteAddr().String(), addr.String())
+			udpConn, err := dialReuseUDP(addr)
+			if err != nil {
+				return nil, fmt.Errorf("error dialing udp: %v", err)
 			}
+
+			conn, err := dtls.ServerWithContext(ctxtimeout, udpConn, reg.keys.SharedSecret)
 			if err != nil {
 				// If an error occurred, fall back to dtls.Dial
 				Logger().Debugf("Falling back to dial: %v", err)
-				return dtls.Dial(addr, reg.keys.SharedSecret)
+				return dtls.ServerWithContext(context.Background(), conn, reg.keys.SharedSecret)
+			}
+			if conn.RemoteAddr().String() != addr.String() {
+				Logger().Warningf("Remote address %v does not match expected %v", conn.RemoteAddr().String(), addr.String())
 			}
 			// If no error, return the established connection
 			return conn, nil
