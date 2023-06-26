@@ -4,14 +4,14 @@ go 1.18
 
 require (
 	github.com/flynn/noise v1.0.0
-	github.com/golang/protobuf v1.5.3
+	github.com/golang/protobuf v1.5.2
 	github.com/jinzhu/copier v0.3.5
 	github.com/keltia/ripe-atlas v0.0.0-20211221125000-f6eb808d5dc6
 	github.com/pelletier/go-toml v1.9.5
 	github.com/pion/stun v0.6.0
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/profile v1.7.0
-	github.com/refraction-networking/conjure v0.4.1
+	github.com/refraction-networking/conjure v0.4.0
 	github.com/refraction-networking/utls v1.2.0
 	github.com/sergeyfrolov/bsbuffer v0.0.0-20180903213811-94e85abb8507
 	github.com/sirupsen/logrus v1.9.0
