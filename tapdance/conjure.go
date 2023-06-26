@@ -2,7 +2,6 @@ package tapdance
 
 import (
 	"context"
-	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
@@ -14,14 +13,10 @@ import (
 	"sync"
 	"time"
 
-	pt "git.torproject.org/pluggable-transports/goptlib.git"
-	"github.com/refraction-networking/conjure/pkg/dtls"
+	"github.com/refraction-networking/conjure/pkg/core"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
 	ps "github.com/refraction-networking/gotapdance/tapdance/phantoms"
 	tls "github.com/refraction-networking/utls"
-	"gitlab.com/yawning/obfs4.git/common/ntor"
-	"gitlab.com/yawning/obfs4.git/transports/obfs4"
-	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/hkdf"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -83,12 +78,7 @@ func DialConjure(ctx context.Context, cjSession *ConjureSession, registrationMet
 	}
 
 	Logger().Debugf("%v Attempting to Connect ...", cjSession.IDString())
-
-	start := time.Now()
-	conn, err := registration.Connect(ctx, registration.Transport)
-	fmt.Printf("TTBF: %v\n", time.Since(start))
-	return conn, err
-	// return Connect(cjSession)
+	return registration.Connect(ctx)
 }
 
 // // testV6 -- This is over simple and incomplete (currently unused)
@@ -118,11 +108,6 @@ func DialConjure(ctx context.Context, cjSession *ConjureSession, registrationMet
 // 	}
 // }
 
-// Connect - Dial the Phantom IP address after registration
-func Connect(ctx context.Context, reg *ConjureReg) (net.Conn, error) {
-	return reg.Connect(ctx, reg.Transport)
-}
-
 // ConjureSession - Create a session with details for registration and connection
 type ConjureSession struct {
 	Keys           *sharedKeys
@@ -134,6 +119,8 @@ type ConjureSession struct {
 	Transport      Transport
 	CovertAddress  string
 	// rtt			   uint // tracked in stats
+
+	AllowRegistrarOverrides bool
 
 	// TcpDialer allows the caller to provide a custom dialer for outgoing proxy connections.
 	//
@@ -155,13 +142,14 @@ func MakeConjureSessionSilent(covert string, transport Transport) *ConjureSessio
 	}
 	//[TODO]{priority:NOW} move v6support initialization to assets so it can be tracked across dials
 	cjSession := &ConjureSession{
-		Keys:           keys,
-		Width:          defaultRegWidth,
-		V6Support:      &V6{support: true, include: both},
-		UseProxyHeader: false,
-		Transport:      transport,
-		CovertAddress:  covert,
-		SessionID:      sessionsTotal.GetAndInc(),
+		Keys:                    keys,
+		Width:                   defaultRegWidth,
+		V6Support:               &V6{support: true, include: both},
+		UseProxyHeader:          false,
+		Transport:               transport,
+		CovertAddress:           covert,
+		SessionID:               sessionsTotal.GetAndInc(),
+		AllowRegistrarOverrides: true,
 	}
 
 	return cjSession
@@ -247,6 +235,7 @@ func (cjSession *ConjureSession) String() string {
 // conjureReg generates ConjureReg from the corresponding ConjureSession
 func (cjSession *ConjureSession) conjureReg() *ConjureReg {
 	return &ConjureReg{
+		ConjureSession: cjSession,
 		sessionIDStr:   cjSession.IDString(),
 		keys:           cjSession.Keys,
 		stats:          &pb.SessionStats{},
@@ -382,121 +371,31 @@ func (reg *ConjureReg) getFirstConnection(ctx context.Context, dialer dialFunc, 
 // Connect - Use a registration (result of calling Register) to connect to a phantom
 // Note: This is hacky but should work for v4, v6, or both as any nil phantom addr will
 // return a dial error and be ignored.
-func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Conn, error) {
+func (reg *ConjureReg) Connect(ctx context.Context) (net.Conn, error) {
 	phantoms := []*net.IP{reg.phantom4, reg.phantom6}
 
-	//[reference] Provide chosen transport to sent bytes (or connect) if necessary
-	switch reg.Transport.ID() {
-	case pb.TransportType_Min:
-		conn, err := reg.getFirstConnection(ctx, reg.Dialer, phantoms)
-		if err != nil {
-			Logger().Infof("%v failed to form phantom connection: %v", reg.sessionIDStr, err)
-			return nil, err
-		}
+	// Prepare the transport by generating any necessary keys
+	pubKey := getStationKey()
+	reg.Transport.PrepareKeys(pubKey, reg.keys.SharedSecret, reg.keys.reader)
 
-		// Send hmac(seed, str) bytes to indicate to station (min transport)
-		connectTag := conjureHMAC(reg.keys.SharedSecret, "MinTrasportHMACString")
-		conn.Write(connectTag)
-		return conn, nil
-
-	case pb.TransportType_Obfs4:
-		args := pt.Args{}
-		args.Add("node-id", reg.keys.Obfs4Keys.NodeID.Hex())
-		args.Add("public-key", reg.keys.Obfs4Keys.PublicKey.Hex())
-		args.Add("iat-mode", "1")
-
-		Logger().Infof("%v node_id = %s; public key = %s", reg.sessionIDStr, reg.keys.Obfs4Keys.NodeID.Hex(), reg.keys.Obfs4Keys.PublicKey.Hex())
-
-		t := obfs4.Transport{}
-		c, err := t.ClientFactory("")
-		if err != nil {
-			Logger().Infof("%v failed to create client factory: %v", reg.sessionIDStr, err)
-			return nil, err
-		}
-
-		parsedArgs, err := c.ParseArgs(&args)
-		if err != nil {
-			Logger().Infof("%v failed to parse obfs4 args: %v", reg.sessionIDStr, err)
-			return nil, err
-		}
-
-		dialer := func(dialContext context.Context, network string, address string) (net.Conn, error) {
-			d := func(network, address string) (net.Conn, error) { return reg.Dialer(dialContext, network, address) }
-			return c.Dial("tcp", address, d, parsedArgs)
-		}
-
-		conn, err := reg.getFirstConnection(ctx, dialer, phantoms)
-		if err != nil {
-			Logger().Infof("%v failed to form obfs4 connection: %v", reg.sessionIDStr, err)
-			return nil, err
-		}
-
-		return conn, err
-	case pb.TransportType_DTLS:
-		dialer := func(ctx context.Context, network, address string) (net.Conn, error) {
-			addr, err := net.ResolveUDPAddr("udp", address)
-			if err != nil {
-				return nil, err
-			}
-
-			// PublicAddr should have been called before registration
-			privPort, pubPort, err := PublicAddr("")
-			if err != nil {
-				return nil, fmt.Errorf("error getting private port to listen to: %v", err)
-			}
-
-			err = openUDP(addr)
-			if err != nil {
-				return nil, fmt.Errorf("error opening UDP port from gateway: %v", err)
-			}
-
-			Logger().Debugf("%v listening dtls from phantom %v on public port %v (private port %v)", reg.sessionIDStr, addr, pubPort, privPort)
-
-			// listener, err := dtls.Listen(laddr)
-			// if err != nil {
-			// 	return nil, fmt.Errorf("error creating DTLS listener: %v", err)
-			// }
-
-			// Create a context that will automatically cancel after 5 seconds or when the existing context is cancelled, whichever comes first.
-			ctxtimeout, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-			defer cancel()
-
-			udpConn, err := dialReuseUDP(addr)
-			if err != nil {
-				return nil, fmt.Errorf("error dialing udp: %v", err)
-			}
-
-			conn, err := dtls.ServerWithContext(ctxtimeout, udpConn, reg.keys.SharedSecret)
-			if err != nil {
-				// If an error occurred, fall back to dtls.Dial
-				Logger().Debugf("Falling back to dial: %v", err)
-				return dtls.ServerWithContext(context.Background(), conn, reg.keys.SharedSecret)
-			}
-			if conn.RemoteAddr().String() != addr.String() {
-				Logger().Warningf("Remote address %v does not match expected %v", conn.RemoteAddr().String(), addr.String())
-			}
-			// If no error, return the established connection
-			return conn, nil
-		}
-		conn, err := reg.getFirstConnection(ctx, dialer, phantoms)
-		if err != nil {
-			Logger().Infof("%v failed to form dtls connection: %v", reg.sessionIDStr, err)
-			return nil, err
-		}
-
-		return conn, nil
-	case pb.TransportType_Null:
-		// Dial and do nothing to the connection before returning it to the user.
-		return reg.getFirstConnection(ctx, reg.Dialer, phantoms)
-	default:
-		// If transport is unrecognized use min transport.
-		return nil, fmt.Errorf("unknown transport")
+	conn, err := reg.getFirstConnection(ctx, reg.Dialer, phantoms)
+	if err != nil {
+		Logger().Infof("%v failed to form phantom connection: %v", reg.sessionIDStr, err)
+		return nil, err
 	}
+
+	conn, err = reg.Transport.WrapConn(conn)
+	if err != nil {
+		Logger().Infof("WrapConn failed")
+		return nil, err
+	}
+	return conn, nil
 }
 
 // ConjureReg - Registration structure created for each individual registration within a session.
 type ConjureReg struct {
 	Transport
+	*ConjureSession
 
 	seed           []byte
 	sessionIDStr   string
@@ -518,6 +417,10 @@ type ConjureReg struct {
 	m     sync.Mutex
 }
 
+// UnpackRegResp unpacks the RegistrationResponse message sent back by the station. This unpacks
+// any field overrides sent by the registrar. When using a bidirectional registration method
+// the server chooses the phantom IP and Port by default. Overrides to transport parameters
+// are applied when reg.AllowRegistrarOverrides is enabled.
 func (reg *ConjureReg) UnpackRegResp(regResp *pb.RegistrationResponse) error {
 	if reg.v6Support == v4 {
 		// Save the ipv4address in the Conjure Reg struct (phantom4) to return
@@ -541,11 +444,25 @@ func (reg *ConjureReg) UnpackRegResp(regResp *pb.RegistrationResponse) error {
 		addr6 := net.IP(regResp.GetIpv6Addr())
 		reg.phantom6 = &addr6
 	}
-	reg.phantomDstPort = uint16(regResp.GetDstPort())
-	if reg.phantomDstPort == 0 {
+
+	p := uint16(regResp.GetDstPort())
+	if p != 0 {
+		reg.phantomDstPort = p
+	} else if reg.phantomDstPort == 0 {
 		// If a bidirectional registrar does not support randomization (or doesn't set the port in the
 		// registration response we default to the original port we used for all transports).
 		reg.phantomDstPort = 443
+	}
+
+	maybeTP := regResp.GetTransportParams()
+	if maybeTP != nil && reg.AllowRegistrarOverrides {
+		err := reg.Transport.SetParams(maybeTP)
+		if err != nil {
+			// If an error occurs while setting transport parameters give up as continuing would
+			// likely lead to incongruence between the client and station and an unserviceable
+			// connection.
+			return err
+		}
 	}
 
 	// Client config -- check if not nil in the registration response
@@ -960,7 +877,7 @@ func SelectDecoys(sharedSecret []byte, version uint, width uint) ([]*pb.TLSDecoy
 	//[reference] select decoys
 	for i := uint(0); i < width; i++ {
 		macString := fmt.Sprintf("registrationdecoy%d", i)
-		hmac := conjureHMAC(sharedSecret, macString)
+		hmac := core.ConjureHMAC(sharedSecret, macString)
 		hmacInt = hmacInt.SetBytes(hmac[:8])
 		hmacInt.SetBytes(hmac)
 		hmacInt.Abs(hmacInt)
@@ -1012,42 +929,10 @@ func getStationKey() [32]byte {
 	return *Assets().GetConjurePubkey()
 }
 
-type Obfs4Keys struct {
-	PrivateKey *ntor.PrivateKey
-	PublicKey  *ntor.PublicKey
-	NodeID     *ntor.NodeID
-}
-
-func generateObfs4Keys(rand io.Reader) (Obfs4Keys, error) {
-	keys := Obfs4Keys{
-		PrivateKey: new(ntor.PrivateKey),
-		PublicKey:  new(ntor.PublicKey),
-		NodeID:     new(ntor.NodeID),
-	}
-
-	_, err := rand.Read(keys.PrivateKey[:])
-	if err != nil {
-		return keys, err
-	}
-
-	keys.PrivateKey[0] &= 248
-	keys.PrivateKey[31] &= 127
-	keys.PrivateKey[31] |= 64
-
-	pub, err := curve25519.X25519(keys.PrivateKey[:], curve25519.Basepoint)
-	if err != nil {
-		return keys, err
-	}
-	copy(keys.PublicKey[:], pub)
-
-	_, err = rand.Read(keys.NodeID[:])
-	return keys, err
-}
-
 type sharedKeys struct {
 	SharedSecret, Representative                               []byte
 	FspKey, FspIv, VspKey, VspIv, NewMasterSecret, ConjureSeed []byte
-	Obfs4Keys                                                  Obfs4Keys
+	reader                                                     io.Reader
 }
 
 func generateSharedKeys(pubkey [32]byte) (*sharedKeys, error) {
@@ -1066,6 +951,7 @@ func generateSharedKeys(pubkey [32]byte) (*sharedKeys, error) {
 		VspIv:           make([]byte, 12),
 		NewMasterSecret: make([]byte, 48),
 		ConjureSeed:     make([]byte, 16),
+		reader:          tdHkdf,
 	}
 
 	if _, err := tdHkdf.Read(keys.FspKey); err != nil {
@@ -1086,14 +972,7 @@ func generateSharedKeys(pubkey [32]byte) (*sharedKeys, error) {
 	if _, err := tdHkdf.Read(keys.ConjureSeed); err != nil {
 		return keys, err
 	}
-	keys.Obfs4Keys, err = generateObfs4Keys(tdHkdf)
 	return keys, err
-}
-
-func conjureHMAC(key []byte, str string) []byte {
-	hash := hmac.New(sha256.New, key)
-	hash.Write([]byte(str))
-	return hash.Sum(nil)
 }
 
 // RegError - Registration Error passed during registration to indicate failure mode

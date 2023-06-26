@@ -6,8 +6,9 @@ import (
 	"github.com/refraction-networking/conjure/application/transports/connecting/dtls"
 	"github.com/refraction-networking/conjure/application/transports/wrapping/min"
 	"github.com/refraction-networking/conjure/application/transports/wrapping/obfs4"
+	"github.com/refraction-networking/conjure/application/transports/wrapping/prefix"
+	cj "github.com/refraction-networking/gotapdance/pkg/interfaces"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
-	cj "github.com/refraction-networking/gotapdance/tapdance"
 )
 
 var transportsByName map[string]cj.Transport = make(map[string]cj.Transport)
@@ -59,6 +60,7 @@ func GetTransportByID(id pb.TransportType) (cj.Transport, bool) {
 var defaultTransports = []cj.Transport{
 	&min.ClientTransport{},
 	&obfs4.ClientTransport{},
+	&prefix.ClientTransport{},
 	&dtls.ClientTransport{},
 }
 
@@ -93,4 +95,15 @@ func EnableDefaultTransports() error {
 
 func init() {
 	EnableDefaultTransports()
+}
+
+func ConfigFromTransportType(transportType pb.TransportType, randomizePortDefault bool) (cj.Transport, error) {
+	switch transportType {
+	case pb.TransportType_Min:
+		return &min.ClientTransport{Parameters: &pb.GenericTransportParams{RandomizeDstPort: &randomizePortDefault}}, nil
+	case pb.TransportType_Obfs4:
+		return &obfs4.ClientTransport{Parameters: &pb.GenericTransportParams{RandomizeDstPort: &randomizePortDefault}}, nil
+	default:
+		return nil, errors.New("unknown transport by TransportType try using TransportConfig")
+	}
 }
