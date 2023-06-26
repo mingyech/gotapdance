@@ -6,7 +6,6 @@ import (
 	"github.com/refraction-networking/conjure/application/transports/connecting/dtls"
 	"github.com/refraction-networking/conjure/application/transports/wrapping/min"
 	"github.com/refraction-networking/conjure/application/transports/wrapping/obfs4"
-	"github.com/refraction-networking/conjure/application/transports/wrapping/prefix"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
 	cj "github.com/refraction-networking/gotapdance/tapdance"
 )
@@ -60,7 +59,6 @@ func GetTransportByID(id pb.TransportType) (cj.Transport, bool) {
 var defaultTransports = []cj.Transport{
 	&min.ClientTransport{},
 	&obfs4.ClientTransport{},
-	&prefix.ClientTransport{},
 	&dtls.ClientTransport{},
 }
 
