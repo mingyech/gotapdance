@@ -15,6 +15,7 @@ import (
 	"time"
 
 	pt "git.torproject.org/pluggable-transports/goptlib.git"
+	"github.com/refraction-networking/conjure/pkg/dtls"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
 	ps "github.com/refraction-networking/gotapdance/tapdance/phantoms"
 	tls "github.com/refraction-networking/utls"
@@ -428,6 +429,59 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 		}
 
 		return conn, err
+	case pb.TransportType_DTLS:
+		dialer := func(ctx context.Context, network, address string) (net.Conn, error) {
+			addr, err := net.ResolveUDPAddr("udp", address)
+			if err != nil {
+				return nil, err
+			}
+
+			// PublicAddr should have been called before registration
+			privPort, pubPort, err := PublicAddr("")
+			if err != nil {
+				return nil, fmt.Errorf("error getting private port to listen to: %v", err)
+			}
+
+			err = openUDP(addr)
+			if err != nil {
+				return nil, fmt.Errorf("error opening UDP port from gateway: %v", err)
+			}
+
+			Logger().Debugf("%v listening dtls from phantom %v on public port %v (private port %v)", reg.sessionIDStr, addr, pubPort, privPort)
+
+			// listener, err := dtls.Listen(laddr)
+			// if err != nil {
+			// 	return nil, fmt.Errorf("error creating DTLS listener: %v", err)
+			// }
+
+			// Create a context that will automatically cancel after 5 seconds or when the existing context is cancelled, whichever comes first.
+			ctxtimeout, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
+
+			udpConn, err := dialReuseUDP(addr)
+			if err != nil {
+				return nil, fmt.Errorf("error dialing udp: %v", err)
+			}
+
+			conn, err := dtls.ServerWithContext(ctxtimeout, udpConn, reg.keys.SharedSecret)
+			if err != nil {
+				// If an error occurred, fall back to dtls.Dial
+				Logger().Debugf("Falling back to dial: %v", err)
+				return dtls.ServerWithContext(context.Background(), conn, reg.keys.SharedSecret)
+			}
+			if conn.RemoteAddr().String() != addr.String() {
+				Logger().Warningf("Remote address %v does not match expected %v", conn.RemoteAddr().String(), addr.String())
+			}
+			// If no error, return the established connection
+			return conn, nil
+		}
+		conn, err := reg.getFirstConnection(ctx, dialer, phantoms)
+		if err != nil {
+			Logger().Infof("%v failed to form dtls connection: %v", reg.sessionIDStr, err)
+			return nil, err
+		}
+
+		return conn, nil
 	case pb.TransportType_Null:
 		// Dial and do nothing to the connection before returning it to the user.
 		return reg.getFirstConnection(ctx, reg.Dialer, phantoms)
