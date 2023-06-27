@@ -3,6 +3,7 @@ module github.com/refraction-networking/gotapdance
 go 1.18
 
 require (
+	git.torproject.org/pluggable-transports/goptlib.git v1.3.0
 	github.com/flynn/noise v1.0.0
 	github.com/golang/protobuf v1.5.2
 	github.com/jinzhu/copier v0.3.5
@@ -16,6 +17,7 @@ require (
 	github.com/sergeyfrolov/bsbuffer v0.0.0-20180903213811-94e85abb8507
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.4
+	gitlab.com/yawning/obfs4.git v0.0.0-20220904064028-336a71d6e4cf
 	golang.org/x/crypto v0.9.0
 	golang.org/x/net v0.10.0
 	google.golang.org/protobuf v1.30.0
@@ -23,7 +25,6 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.0.0 // indirect
-	git.torproject.org/pluggable-transports/goptlib.git v1.3.0 // indirect
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
@@ -51,11 +52,10 @@ require (
 	github.com/pion/transport/v2 v2.2.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gitlab.com/yawning/edwards25519-extra.git v0.0.0-20220726154925-def713fd18e4 // indirect
-	gitlab.com/yawning/obfs4.git v0.0.0-20220904064028-336a71d6e4cf // indirect
 	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/refraction-networking/conjure => github.com/mingyech/conjure v0.2.1-0.20230626174057-1f0f964df520
+replace github.com/refraction-networking/conjure => github.com/mingyech/conjure v0.2.1-0.20230627114325-3e579b0adfe3
