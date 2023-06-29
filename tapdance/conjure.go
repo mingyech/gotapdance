@@ -479,10 +479,17 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 				Logger().Warningf("Remote address %v does not match expected %v", conn.RemoteAddr().String(), addr.String())
 			}
 
-			err = heartbeat.Client(conn, nil)
+			sctpConn, err := dtls.OpenSCTP(conn)
+			if err != nil {
+				return nil, fmt.Errorf("error opening SCTP: %v", err)
+			}
+
+			err = heartbeat.Client(sctpConn, nil)
 			if err != nil {
 				return nil, fmt.Errorf("error adding heartbeat: %v", err)
 			}
+
+			Logger().Debugf("DTLS connection established\n")
 
 			return conn, nil
 		}
