@@ -16,15 +16,16 @@ type fileConn interface {
 	File() (*os.File, error)
 }
 
-func openUDP(addr *net.UDPAddr) error {
+func openUDP(laddr, addr *net.UDPAddr) error {
 	// Create a UDP connection
-	conn, err := dialReuseUDP(addr)
+	conn, err := net.DialUDP("udp", laddr, addr)
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
 	// Get the file descriptor
-	fd, err := conn.(fileConn).File()
+	fd, err := conn.File()
 	if err != nil {
 		return err
 	}
@@ -105,15 +106,11 @@ func PublicAddr(stunServer string) (privatePort int, publicPort int, err error) 
 		return privPortSingle, pubPortSingle, nil
 	}
 
-	udpAddr, err := net.ResolveUDPAddr("udp", stunServer)
-	if err != nil {
-		return 0, 0, fmt.Errorf("error resolving UDP address: %v", err)
-	}
-
-	udpConn, err := dialReuseUDP(udpAddr)
+	udpConn, err := net.Dial("udp", stunServer)
 	if err != nil {
 		return 0, 0, fmt.Errorf("error connecting to STUN server: %v", err)
 	}
+	defer udpConn.Close()
 
 	localAddr, err := net.ResolveUDPAddr(udpConn.LocalAddr().Network(), udpConn.LocalAddr().String())
 	if err != nil {

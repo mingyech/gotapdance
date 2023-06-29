@@ -443,23 +443,21 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 				return nil, fmt.Errorf("error getting private port to listen to: %v", err)
 			}
 
-			err = openUDP(addr)
+			laddr := &net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: privPort}
+			err = openUDP(laddr, addr)
 			if err != nil {
 				return nil, fmt.Errorf("error opening UDP port from gateway: %v", err)
 			}
 
 			Logger().Debugf("%v listening dtls from phantom %v on public port %v (private port %v)", reg.sessionIDStr, addr, pubPort, privPort)
 
-			// listener, err := dtls.Listen(laddr)
-			// if err != nil {
-			// 	return nil, fmt.Errorf("error creating DTLS listener: %v", err)
-			// }
-
 			// Create a context that will automatically cancel after 5 seconds or when the existing context is cancelled, whichever comes first.
-			ctxtimeout, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			parentctx, parentcancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer parentcancel()
+			ctxtimeout, cancel := context.WithTimeout(parentctx, 5*time.Second)
 			defer cancel()
 
-			udpConn, err := dialReuseUDP(addr)
+			udpConn, err := net.DialUDP("udp", laddr, addr)
 			if err != nil {
 				return nil, fmt.Errorf("error dialing udp: %v", err)
 			}
@@ -468,7 +466,11 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 			if err != nil {
 				// If an error occurred, fall back to dtls.Dial
 				Logger().Debugf("Error listening for incoming connection: %v, falling back to dial", err)
-				conn, err = dtls.ClientWithContext(context.Background(), udpConn, reg.keys.SharedSecret)
+				udpConn, err := net.DialUDP("udp", laddr, addr)
+				if err != nil {
+					return nil, fmt.Errorf("error dialing udp: %v", err)
+				}
+				conn, err = dtls.ClientWithContext(parentctx, udpConn, reg.keys.SharedSecret)
 				if err != nil {
 					return nil, fmt.Errorf("error dialing as client: %v", err)
 				}
