@@ -16,6 +16,7 @@ import (
 
 	pt "git.torproject.org/pluggable-transports/goptlib.git"
 	"github.com/refraction-networking/conjure/pkg/dtls"
+	"github.com/refraction-networking/conjure/pkg/heartbeat"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
 	ps "github.com/refraction-networking/gotapdance/tapdance/phantoms"
 	tls "github.com/refraction-networking/utls"
@@ -466,13 +467,21 @@ func (reg *ConjureReg) Connect(ctx context.Context, transport Transport) (net.Co
 			conn, err := dtls.ServerWithContext(ctxtimeout, udpConn, reg.keys.SharedSecret)
 			if err != nil {
 				// If an error occurred, fall back to dtls.Dial
-				Logger().Debugf("Falling back to dial: %v", err)
-				return dtls.ClientWithContext(context.Background(), udpConn, reg.keys.SharedSecret)
+				Logger().Debugf("Error listening for incoming connection: %v, falling back to dial", err)
+				conn, err = dtls.ClientWithContext(context.Background(), udpConn, reg.keys.SharedSecret)
+				if err != nil {
+					return nil, fmt.Errorf("error dialing as client: %v", err)
+				}
 			}
 			if conn.RemoteAddr().String() != addr.String() {
 				Logger().Warningf("Remote address %v does not match expected %v", conn.RemoteAddr().String(), addr.String())
 			}
-			// If no error, return the established connection
+
+			err = heartbeat.Client(conn, nil)
+			if err != nil {
+				return nil, fmt.Errorf("error adding heartbeat: %v", err)
+			}
+
 			return conn, nil
 		}
 		conn, err := reg.getFirstConnection(ctx, dialer, phantoms)
