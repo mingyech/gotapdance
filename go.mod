@@ -58,4 +58,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/refraction-networking/conjure => github.com/mingyech/conjure v0.2.1-0.20230629150807-1277be45960d
+replace github.com/refraction-networking/conjure => github.com/mingyech/conjure v0.2.1-0.20230629091918-fb1e5d549467
